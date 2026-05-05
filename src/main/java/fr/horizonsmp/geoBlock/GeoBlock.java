@@ -1,5 +1,6 @@
 package fr.horizonsmp.geoBlock;
 
+import fr.horizonsmp.geoBlock.bypass.BypassStore;
 import fr.horizonsmp.geoBlock.config.ConfigLoader;
 import fr.horizonsmp.geoBlock.config.PluginConfig;
 import fr.horizonsmp.geoBlock.geoip.GeoIpService;
@@ -15,6 +16,7 @@ public final class GeoBlock extends JavaPlugin {
     private PluginConfig config;
     private MaxMindGeoIpService geoIpService;
     private MmdbAutoUpdater autoUpdater;
+    private BypassStore bypassStore;
 
     @Override
     public void onEnable() {
@@ -22,6 +24,9 @@ public final class GeoBlock extends JavaPlugin {
         this.messages = new Messages(this);
         this.config = configLoader.load();
         this.messages.load();
+
+        this.bypassStore = new BypassStore(this);
+        this.bypassStore.load();
 
         this.geoIpService = new MaxMindGeoIpService(getLogger(), getDataFolder().toPath(), config);
         this.geoIpService.initialize();
@@ -65,5 +70,9 @@ public final class GeoBlock extends JavaPlugin {
 
     public GeoIpService geoIpService() {
         return geoIpService;
+    }
+
+    public BypassStore bypassStore() {
+        return bypassStore;
     }
 }

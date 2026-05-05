@@ -49,6 +49,11 @@ public final class MaxMindGeoIpService implements GeoIpService {
     }
 
     @Override
+    public boolean isDatabaseLoaded() {
+        return readersRef.get().country != null;
+    }
+
+    @Override
     public Optional<LookupResult> lookup(InetAddress address) {
         if (address == null || isPrivate(address)) {
             return NO_RESULT;

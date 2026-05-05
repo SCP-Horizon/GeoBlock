@@ -9,6 +9,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -49,13 +50,15 @@ public final class MmdbDownloader {
             throw new IOException("MaxMind license key is required for automatic updates");
         }
 
+        Path stagingDir = stagingDirectoryFor(target);
+
         URI uri = URI.create(String.format(DOWNLOAD_URL, edition, licenseKey));
         HttpRequest req = HttpRequest.newBuilder(uri)
                 .timeout(Duration.ofMinutes(2))
                 .GET()
                 .build();
 
-        Path tmpArchive = Files.createTempFile("geoblock-mmdb-", ".tar.gz");
+        Path tmpArchive = Files.createTempFile(stagingDir, "geoblock-mmdb-", ".tar.gz");
         try {
             HttpResponse<Path> response = http.send(req,
                     HttpResponse.BodyHandlers.ofFile(tmpArchive));
@@ -63,7 +66,7 @@ public final class MmdbDownloader {
                 throw new IOException("MaxMind returned HTTP " + response.statusCode()
                         + " for " + edition + " (check the license key)");
             }
-            extractMmdb(tmpArchive, target);
+            extractMmdb(tmpArchive, target, stagingDir);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Download was interrupted", e);
@@ -76,52 +79,81 @@ public final class MmdbDownloader {
         }
     }
 
-    private static void extractMmdb(Path archive, Path target) throws IOException {
-        Path tmpExtract = Files.createTempFile("geoblock-mmdb-", ".mmdb");
-        boolean extracted = false;
-        try (InputStream in = Files.newInputStream(archive);
-             GZIPInputStream gzip = new GZIPInputStream(in);
-             BufferedInputStream buffered = new BufferedInputStream(gzip)) {
+    private static Path stagingDirectoryFor(Path target) throws IOException {
+        Path parent = target.toAbsolutePath().getParent();
+        if (parent == null) {
+            parent = Path.of(".").toAbsolutePath().normalize();
+        }
+        Files.createDirectories(parent);
+        return parent;
+    }
 
-            byte[] header = new byte[TAR_BLOCK_SIZE];
-            while (true) {
-                int read = buffered.readNBytes(header, 0, TAR_BLOCK_SIZE);
-                if (read < TAR_BLOCK_SIZE) {
-                    break;
-                }
-                if (isAllZero(header)) {
-                    break;
-                }
-                String name = readString(header, 0, NAME_LENGTH);
-                long size = parseOctal(header, SIZE_OFFSET, SIZE_LENGTH);
-                long padded = ((size + TAR_BLOCK_SIZE - 1) / TAR_BLOCK_SIZE) * TAR_BLOCK_SIZE;
+    private static void extractMmdb(Path archive, Path target, Path stagingDir) throws IOException {
+        Path tmpExtract = Files.createTempFile(stagingDir, "geoblock-mmdb-", ".mmdb");
+        boolean moved = false;
+        try {
+            try (InputStream in = Files.newInputStream(archive);
+                 GZIPInputStream gzip = new GZIPInputStream(in);
+                 BufferedInputStream buffered = new BufferedInputStream(gzip)) {
 
-                if (name.endsWith(".mmdb")) {
-                    try (OutputStream out = Files.newOutputStream(tmpExtract)) {
-                        copyExact(buffered, out, size);
-                    }
-                    long padding = padded - size;
-                    if (padding > 0) {
-                        buffered.skipNBytes(padding);
-                    }
-                    extracted = true;
-                    break;
-                } else {
-                    if (padded > 0) {
-                        buffered.skipNBytes(padded);
-                    }
+                if (!readArchiveInto(buffered, tmpExtract)) {
+                    throw new IOException("Archive did not contain any .mmdb file");
+                }
+            }
+            atomicReplace(tmpExtract, target);
+            moved = true;
+        } finally {
+            if (!moved) {
+                try {
+                    Files.deleteIfExists(tmpExtract);
+                } catch (IOException ignored) {
+                    // best-effort cleanup
                 }
             }
         }
+    }
 
-        if (!extracted) {
-            Files.deleteIfExists(tmpExtract);
-            throw new IOException("Archive did not contain any .mmdb file");
+    private static boolean readArchiveInto(BufferedInputStream buffered, Path tmpExtract) throws IOException {
+        byte[] header = new byte[TAR_BLOCK_SIZE];
+        while (true) {
+            int read = buffered.readNBytes(header, 0, TAR_BLOCK_SIZE);
+            if (read < TAR_BLOCK_SIZE) {
+                return false;
+            }
+            if (isAllZero(header)) {
+                return false;
+            }
+            String name = readString(header, 0, NAME_LENGTH);
+            long size = parseOctal(header, SIZE_OFFSET, SIZE_LENGTH);
+            long padded = ((size + TAR_BLOCK_SIZE - 1) / TAR_BLOCK_SIZE) * TAR_BLOCK_SIZE;
+
+            if (name.endsWith(".mmdb")) {
+                try (OutputStream out = Files.newOutputStream(tmpExtract)) {
+                    copyExact(buffered, out, size);
+                }
+                long padding = padded - size;
+                if (padding > 0) {
+                    buffered.skipNBytes(padding);
+                }
+                return true;
+            }
+            if (padded > 0) {
+                buffered.skipNBytes(padded);
+            }
         }
+    }
 
-        Files.move(tmpExtract, target,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE);
+    private static void atomicReplace(Path source, Path target) throws IOException {
+        try {
+            Files.move(source, target,
+                    StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            // Fall back to a regular replace; the staging directory should be on
+            // the same volume as the target, but some exotic filesystems still
+            // refuse atomic moves even within the same mount.
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 
     private static void copyExact(InputStream in, OutputStream out, long bytes) throws IOException {

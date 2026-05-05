@@ -9,6 +9,7 @@ import fr.horizonsmp.geoBlock.geoip.MmdbAutoUpdater;
 import fr.horizonsmp.geoBlock.i18n.Messages;
 import fr.horizonsmp.geoBlock.listener.ConnectionGuard;
 import fr.horizonsmp.geoBlock.listener.PreLoginListener;
+import fr.horizonsmp.geoBlock.permission.PermissionService;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class GeoBlock extends JavaPlugin {
@@ -20,6 +21,7 @@ public final class GeoBlock extends JavaPlugin {
     private MmdbAutoUpdater autoUpdater;
     private BypassStore bypassStore;
     private ConnectionGuard connectionGuard;
+    private PermissionService permissionService;
 
     @Override
     public void onEnable() {
@@ -38,6 +40,9 @@ public final class GeoBlock extends JavaPlugin {
         this.autoUpdater.start(config);
 
         this.connectionGuard = new ConnectionGuard(bypassStore, geoIpService, this::pluginConfig);
+
+        this.permissionService = new PermissionService(this);
+        this.permissionService.announceProvider();
 
         getServer().getPluginManager().registerEvents(
                 new PreLoginListener(connectionGuard, messages), this);
@@ -87,5 +92,9 @@ public final class GeoBlock extends JavaPlugin {
 
     public ConnectionGuard connectionGuard() {
         return connectionGuard;
+    }
+
+    public PermissionService permissionService() {
+        return permissionService;
     }
 }

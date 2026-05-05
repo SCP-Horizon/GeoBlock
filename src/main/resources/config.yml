@@ -1,0 +1,66 @@
+# =====================================================================
+# GeoBlock configuration
+#
+# Filter Minecraft connections based on the country resolved from the
+# player's IP address using a local MaxMind GeoLite2 database.
+# =====================================================================
+
+# Filtering mode applied to the country list below.
+#   blacklist : countries listed are denied, everyone else is allowed
+#   whitelist : only countries listed are allowed, everyone else denied
+mode: blacklist
+
+# ISO 3166-1 alpha-2 country codes (uppercase) used by the filter.
+# Examples: FR, BE, CA, RU, KP, US.
+countries:
+  - RU
+  - KP
+
+# What to do when the IP cannot be resolved to a country
+# (private IPs, lookup error, missing database).
+#   allow : let the player connect (fail-open, recommended)
+#   deny  : refuse the connection (fail-closed, strict)
+on-lookup-failure: allow
+
+# MaxMind GeoLite2 country database settings.
+geoip:
+  # MaxMind license key. Required for automatic updates of GeoLite2.
+  # Get one for free at https://www.maxmind.com/en/geolite2/signup.
+  # If left empty, the plugin will only use the file at "database-path"
+  # below, which the server administrator must provide manually.
+  license-key: ""
+
+  # Automatically download and refresh the GeoLite2-Country database.
+  auto-update: true
+
+  # How often to check for database updates, in hours.
+  update-interval-hours: 168
+
+  # Path to the GeoLite2-Country MMDB file, relative to the plugin
+  # data folder, or absolute.
+  database-path: "GeoLite2-Country.mmdb"
+
+# Optional VPN / proxy detection through the MaxMind GeoLite2
+# Anonymous-IP database. Disabled by default.
+vpn-detection:
+  enabled: false
+
+  # Path to the GeoLite2-Anonymous-IP MMDB file, relative to the plugin
+  # data folder, or absolute. Note: the GeoLite2 Anonymous-IP database
+  # is part of the same MaxMind subscription as the country database.
+  database-path: "GeoLite2-Anonymous-IP.mmdb"
+
+  # When a VPN/proxy is detected, refuse the connection.
+  block-on-detection: true
+
+# Discord webhook used to notify staff when a connection is denied.
+discord:
+  # Full webhook URL, leave empty to disable notifications.
+  webhook-url: ""
+
+  # Include the player's IP address in the embed. Disable to comply
+  # with stricter privacy requirements.
+  include-ip: true
+
+  # Display name used in the webhook message.
+  username: "GeoBlock"

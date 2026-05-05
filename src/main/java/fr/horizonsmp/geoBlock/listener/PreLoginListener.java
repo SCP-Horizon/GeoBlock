@@ -27,23 +27,30 @@ public final class PreLoginListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPreLogin(AsyncPlayerPreLoginEvent event) {
         ConnectionDecision decision = guard.evaluate(event.getUniqueId(), event.getAddress());
-        if (decision.allowed()) {
+        String ipAddress = event.getAddress() == null ? null : event.getAddress().getHostAddress();
+
+        if (!decision.allowed()) {
+            DenialReason reason = decision.reason().orElse(DenialReason.LOOKUP_FAILED);
+            Component kickMessage = messages.get(reason.messageKey(), Map.of(
+                    "country", decision.countryDisplayName(),
+                    "countryCode", decision.countryIso().orElse("--"),
+                    "ip", ipAddress == null ? "" : ipAddress,
+                    "uuid", event.getUniqueId() == null ? "" : event.getUniqueId().toString(),
+                    "name", event.getName() == null ? "" : event.getName()
+            ));
+            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, kickMessage);
+            webhook.notifyDenial(event.getName(), event.getUniqueId(), ipAddress, decision);
             return;
         }
-        DenialReason reason = decision.reason().orElse(DenialReason.LOOKUP_FAILED);
-        Component kickMessage = messages.get(reason.messageKey(), Map.of(
-                "country", decision.countryDisplayName(),
-                "countryCode", decision.countryIso().orElse("--"),
-                "ip", event.getAddress() == null ? "" : event.getAddress().getHostAddress(),
-                "uuid", event.getUniqueId() == null ? "" : event.getUniqueId().toString(),
-                "name", event.getName() == null ? "" : event.getName()
-        ));
-        event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, kickMessage);
-        webhook.notifyDenial(
-                event.getName(),
-                event.getUniqueId(),
-                event.getAddress() == null ? null : event.getAddress().getHostAddress(),
-                decision
-        );
+
+        if (decision.lookupStatus().isFailure()) {
+            webhook.notifyLookupFailure(
+                    event.getName(),
+                    event.getUniqueId(),
+                    ipAddress,
+                    decision.lookupStatus(),
+                    true
+            );
+        }
     }
 }

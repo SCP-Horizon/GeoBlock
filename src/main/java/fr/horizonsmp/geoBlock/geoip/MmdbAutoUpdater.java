@@ -7,7 +7,9 @@ import org.bukkit.scheduler.BukkitTask;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -21,18 +23,23 @@ public final class MmdbAutoUpdater {
     private final MaxMindGeoIpService geoIpService;
     private final MmdbDownloader downloader;
     private final Logger logger;
+    private final Supplier<PluginConfig> configSupplier;
 
     private BukkitTask task;
 
-    public MmdbAutoUpdater(Plugin plugin, MaxMindGeoIpService geoIpService) {
+    public MmdbAutoUpdater(Plugin plugin,
+                           MaxMindGeoIpService geoIpService,
+                           Supplier<PluginConfig> configSupplier) {
         this.plugin = plugin;
         this.geoIpService = geoIpService;
         this.downloader = new MmdbDownloader();
         this.logger = plugin.getLogger();
+        this.configSupplier = configSupplier;
     }
 
-    public void start(PluginConfig config) {
+    public void start() {
         stop();
+        PluginConfig config = configSupplier.get();
         if (!config.geoip().autoUpdate()) {
             return;
         }
@@ -46,7 +53,7 @@ public final class MmdbAutoUpdater {
 
         this.task = plugin.getServer().getScheduler().runTaskTimerAsynchronously(
                 plugin,
-                () -> updateAll(config),
+                this::runScheduledUpdate,
                 0L,
                 intervalTicks
         );
@@ -59,22 +66,44 @@ public final class MmdbAutoUpdater {
         }
     }
 
-    private void updateAll(PluginConfig config) {
-        boolean anyChange = false;
-        anyChange |= downloadIfNeeded(COUNTRY_EDITION, config.geoip().licenseKey(),
-                resolvePath(config.geoip().databasePath()));
-        if (config.vpnDetection().enabled()) {
-            anyChange |= downloadIfNeeded(ANONYMOUS_EDITION, config.geoip().licenseKey(),
-                    resolvePath(config.vpnDetection().databasePath()));
+    /**
+     * Triggers an immediate update on a background thread, regardless of
+     * the auto-update schedule. Resolves with NO_LICENSE when no license
+     * key is configured so callers can render a precise message.
+     */
+    public CompletableFuture<UpdateOutcome> triggerUpdateNow() {
+        PluginConfig config = configSupplier.get();
+        if (config.geoip().licenseKey().isBlank()) {
+            return CompletableFuture.completedFuture(UpdateOutcome.NO_LICENSE);
         }
-        if (anyChange) {
-            geoIpService.reload();
-        }
+        return CompletableFuture.supplyAsync(() -> performUpdate(config));
     }
 
-    private boolean downloadIfNeeded(String edition, String licenseKey, Path target) {
+    private void runScheduledUpdate() {
+        performUpdate(configSupplier.get());
+    }
+
+    private UpdateOutcome performUpdate(PluginConfig config) {
+        boolean countrySuccess = downloadIfPossible(COUNTRY_EDITION,
+                config.geoip().licenseKey(),
+                resolvePath(config.geoip().databasePath()));
+        boolean anonymousSuccess = true;
+        if (config.vpnDetection().enabled()) {
+            anonymousSuccess = downloadIfPossible(ANONYMOUS_EDITION,
+                    config.geoip().licenseKey(),
+                    resolvePath(config.vpnDetection().databasePath()));
+        }
+        if (countrySuccess || anonymousSuccess) {
+            geoIpService.reload();
+        }
+        return countrySuccess ? UpdateOutcome.SUCCESS : UpdateOutcome.FAILED;
+    }
+
+    private boolean downloadIfPossible(String edition, String licenseKey, Path target) {
         try {
-            Files.createDirectories(target.getParent());
+            if (target.getParent() != null) {
+                Files.createDirectories(target.getParent());
+            }
             logger.info("Downloading " + edition + " from MaxMind ...");
             downloader.download(edition, licenseKey, target);
             logger.info("Updated " + edition + " at " + target);

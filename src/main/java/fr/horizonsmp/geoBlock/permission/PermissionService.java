@@ -11,6 +11,7 @@ public final class PermissionService {
     public static final String ADMIN = "geoblock.admin";
     public static final String COMMAND_RELOAD = "geoblock.command.reload";
     public static final String COMMAND_BYPASS = "geoblock.command.bypass";
+    public static final String COMMAND_UPDATE = "geoblock.command.update";
 
     private final Logger logger;
 
@@ -35,7 +36,11 @@ public final class PermissionService {
         return sender.hasPermission(COMMAND_BYPASS) || sender.hasPermission(ADMIN);
     }
 
+    public boolean canUpdate(CommandSender sender) {
+        return sender.hasPermission(COMMAND_UPDATE) || sender.hasPermission(ADMIN);
+    }
+
     public boolean canUseAnyCommand(CommandSender sender) {
-        return canReload(sender) || canManageBypass(sender);
+        return canReload(sender) || canManageBypass(sender) || canUpdate(sender);
     }
 }

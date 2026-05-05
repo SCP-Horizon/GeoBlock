@@ -13,7 +13,7 @@ softdepend:
 commands:
   geoblock:
     description: GeoBlock administration commands.
-    usage: /<command> [reload|bypass|help]
+    usage: /<command> [reload|bypass|update|help]
     aliases: [gb]
     permission: geoblock.admin
 
@@ -24,9 +24,13 @@ permissions:
     children:
       geoblock.command.reload: true
       geoblock.command.bypass: true
+      geoblock.command.update: true
   geoblock.command.reload:
     description: Allows reloading the GeoBlock configuration.
     default: op
   geoblock.command.bypass:
     description: Allows managing the IP and UUID bypass list.
+    default: op
+  geoblock.command.update:
+    description: Allows triggering an immediate MaxMind database download.
     default: op

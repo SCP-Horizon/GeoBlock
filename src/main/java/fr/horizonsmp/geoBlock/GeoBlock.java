@@ -39,8 +39,8 @@ public final class GeoBlock extends JavaPlugin {
         this.geoIpService = new MaxMindGeoIpService(getLogger(), getDataFolder().toPath(), config);
         this.geoIpService.initialize();
 
-        this.autoUpdater = new MmdbAutoUpdater(this, geoIpService);
-        this.autoUpdater.start(config);
+        this.autoUpdater = new MmdbAutoUpdater(this, geoIpService, this::pluginConfig);
+        this.autoUpdater.start();
 
         this.connectionGuard = new ConnectionGuard(bypassStore, geoIpService, this::pluginConfig);
 
@@ -84,7 +84,7 @@ public final class GeoBlock extends JavaPlugin {
             geoIpService.reload();
         }
         if (autoUpdater != null) {
-            autoUpdater.start(config);
+            autoUpdater.start();
         }
     }
 
@@ -114,5 +114,9 @@ public final class GeoBlock extends JavaPlugin {
 
     public DiscordWebhookService discordWebhookService() {
         return discordWebhookService;
+    }
+
+    public MmdbAutoUpdater mmdbAutoUpdater() {
+        return autoUpdater;
     }
 }

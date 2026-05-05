@@ -3,9 +3,16 @@ paper-api = "26.1.2.build.+"
 minecraft = "26.1.2"
 
 run-task = "3.0.2"
+shadow = "8.3.6"
+
+geoip2 = "4.2.1"
+caffeine = "3.1.8"
 
 [libraries]
 paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper-api" }
+geoip2 = { module = "com.maxmind.geoip2:geoip2", version.ref = "geoip2" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 
 [plugins]
 run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-task" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

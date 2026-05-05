@@ -1,0 +1,47 @@
+# =====================================================================
+# GeoBlock messages
+#
+# Color codes use the standard '&' prefix (translated to section signs
+# at runtime). Available placeholders are documented next to each key.
+# =====================================================================
+
+# --- Connection denial messages (sent as a kick reason) -------------
+# Placeholders: {country}, {countryCode}, {ip}, {uuid}, {name}
+kick:
+  blocked: "&cConnection refused.\n&7Country &e{country}&7 is blocked on this server."
+  not-whitelisted: "&cConnection refused.\n&7Country &e{country}&7 is not allowed on this server."
+  vpn: "&cConnection refused.\n&7VPN or proxy detected."
+  lookup-failed: "&cConnection refused.\n&7Could not verify your country."
+
+# --- Command feedback ----------------------------------------------
+command:
+  no-permission: "&cYou do not have permission to run this command."
+  player-only: "&cThis command can only be used in-game."
+  unknown-subcommand: "&cUnknown subcommand. Try &e/{label} help&c."
+  reload-success: "&aGeoBlock configuration reloaded."
+  reload-failed: "&cReload failed: &7{error}"
+
+  bypass:
+    invalid-ip: "&cInvalid IP or CIDR: &e{value}"
+    invalid-uuid: "&cInvalid UUID: &e{value}"
+    ip-added: "&aAdded IP &e{value}&a to the bypass list."
+    ip-removed: "&aRemoved IP &e{value}&a from the bypass list."
+    ip-already-listed: "&7IP &e{value}&7 is already in the bypass list."
+    ip-not-found: "&7IP &e{value}&7 was not in the bypass list."
+    uuid-added: "&aAdded UUID &e{value}&a to the bypass list."
+    uuid-removed: "&aRemoved UUID &e{value}&a from the bypass list."
+    uuid-already-listed: "&7UUID &e{value}&7 is already in the bypass list."
+    uuid-not-found: "&7UUID &e{value}&7 was not in the bypass list."
+    list-header: "&8&m            &r &eGeoBlock bypass list &8&m            "
+    list-empty: "&7The bypass list is empty."
+    list-ip-entry: "&8- &fIP &7{value}"
+    list-uuid-entry: "&8- &fUUID &7{value}"
+
+  help:
+    header: "&8&m            &r &eGeoBlock commands &8&m            "
+    reload: "&e/{label} reload &8- &7Reload configuration"
+    bypass-add-ip: "&e/{label} bypass add ip <ip|cidr> &8- &7Add an IP or CIDR"
+    bypass-add-uuid: "&e/{label} bypass add uuid <uuid> &8- &7Add a player UUID"
+    bypass-remove-ip: "&e/{label} bypass remove ip <ip|cidr> &8- &7Remove an IP entry"
+    bypass-remove-uuid: "&e/{label} bypass remove uuid <uuid> &8- &7Remove a UUID entry"
+    bypass-list: "&e/{label} bypass list &8- &7Show all bypass entries"

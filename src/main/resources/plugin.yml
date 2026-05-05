@@ -10,6 +10,13 @@ load: POSTWORLD
 softdepend:
   - LuckPerms
 
+commands:
+  geoblock:
+    description: GeoBlock administration commands.
+    usage: /<command> [reload|bypass|help]
+    aliases: [gb]
+    permission: geoblock.admin
+
 permissions:
   geoblock.admin:
     description: Full access to GeoBlock commands.

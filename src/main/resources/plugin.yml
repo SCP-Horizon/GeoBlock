@@ -1,0 +1,8 @@
+name: GeoBlock
+version: '${version}'
+
+main: fr.horizonsmp.geoBlock.GeoBlock
+api-version: '26.1.2'
+load: POSTWORLD
+
+authors: [Orchiwi]

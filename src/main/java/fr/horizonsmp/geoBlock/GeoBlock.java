@@ -7,6 +7,8 @@ import fr.horizonsmp.geoBlock.geoip.GeoIpService;
 import fr.horizonsmp.geoBlock.geoip.MaxMindGeoIpService;
 import fr.horizonsmp.geoBlock.geoip.MmdbAutoUpdater;
 import fr.horizonsmp.geoBlock.i18n.Messages;
+import fr.horizonsmp.geoBlock.listener.ConnectionGuard;
+import fr.horizonsmp.geoBlock.listener.PreLoginListener;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class GeoBlock extends JavaPlugin {
@@ -17,6 +19,7 @@ public final class GeoBlock extends JavaPlugin {
     private MaxMindGeoIpService geoIpService;
     private MmdbAutoUpdater autoUpdater;
     private BypassStore bypassStore;
+    private ConnectionGuard connectionGuard;
 
     @Override
     public void onEnable() {
@@ -33,6 +36,11 @@ public final class GeoBlock extends JavaPlugin {
 
         this.autoUpdater = new MmdbAutoUpdater(this, geoIpService);
         this.autoUpdater.start(config);
+
+        this.connectionGuard = new ConnectionGuard(bypassStore, geoIpService, this::pluginConfig);
+
+        getServer().getPluginManager().registerEvents(
+                new PreLoginListener(connectionGuard, messages), this);
 
         getLogger().info("GeoBlock loaded in " + config.mode() + " mode with "
                 + config.countries().size() + " countries.");
@@ -51,6 +59,7 @@ public final class GeoBlock extends JavaPlugin {
     public void reloadAll() {
         this.config = configLoader.load();
         this.messages.load();
+        this.bypassStore.load();
         if (geoIpService != null) {
             geoIpService.updateConfig(config);
             geoIpService.reload();
@@ -74,5 +83,9 @@ public final class GeoBlock extends JavaPlugin {
 
     public BypassStore bypassStore() {
         return bypassStore;
+    }
+
+    public ConnectionGuard connectionGuard() {
+        return connectionGuard;
     }
 }

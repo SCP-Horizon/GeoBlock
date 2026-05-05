@@ -11,6 +11,7 @@ import fr.horizonsmp.geoBlock.i18n.Messages;
 import fr.horizonsmp.geoBlock.listener.ConnectionGuard;
 import fr.horizonsmp.geoBlock.listener.PreLoginListener;
 import fr.horizonsmp.geoBlock.permission.PermissionService;
+import fr.horizonsmp.geoBlock.webhook.DiscordWebhookService;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class GeoBlock extends JavaPlugin {
@@ -23,6 +24,7 @@ public final class GeoBlock extends JavaPlugin {
     private BypassStore bypassStore;
     private ConnectionGuard connectionGuard;
     private PermissionService permissionService;
+    private DiscordWebhookService discordWebhookService;
 
     @Override
     public void onEnable() {
@@ -45,8 +47,10 @@ public final class GeoBlock extends JavaPlugin {
         this.permissionService = new PermissionService(this);
         this.permissionService.announceProvider();
 
+        this.discordWebhookService = new DiscordWebhookService(this::pluginConfig, getLogger());
+
         getServer().getPluginManager().registerEvents(
-                new PreLoginListener(connectionGuard, messages), this);
+                new PreLoginListener(connectionGuard, messages, discordWebhookService), this);
 
         GeoBlockCommand commandExecutor = new GeoBlockCommand(this);
         var rootCommand = getCommand("geoblock");
@@ -106,5 +110,9 @@ public final class GeoBlock extends JavaPlugin {
 
     public PermissionService permissionService() {
         return permissionService;
+    }
+
+    public DiscordWebhookService discordWebhookService() {
+        return discordWebhookService;
     }
 }

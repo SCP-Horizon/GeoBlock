@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 public final class MmdbAutoUpdater {
 
     private static final String COUNTRY_EDITION = "GeoLite2-Country";
-    private static final String ANONYMOUS_EDITION = "GeoLite2-Anonymous-IP";
+    private static final String ANONYMOUS_EDITION = "GeoIP2-Anonymous-IP";
     private static final long TICKS_PER_SECOND = 20L;
 
     private final Plugin plugin;

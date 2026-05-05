@@ -10,7 +10,8 @@ optional VPN/proxy detection, and Discord webhook notifications.
 - IP and UUID bypass list (CIDR ranges supported, IPv4 + IPv6).
 - Permission integration through the standard Bukkit API
   (works with LuckPerms or vanilla `/op`).
-- Optional VPN/proxy detection through MaxMind anonymous-IP database.
+- Optional VPN/proxy detection through MaxMind GeoIP2 Anonymous-IP
+  database (paid product, separate from the free GeoLite2 country DB).
 - Async Discord webhook for connection denials.
 - Hot configuration reload via `/geoblock reload`.
 

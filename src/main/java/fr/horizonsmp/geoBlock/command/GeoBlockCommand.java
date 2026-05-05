@@ -2,8 +2,10 @@ package fr.horizonsmp.geoBlock.command;
 
 import fr.horizonsmp.geoBlock.GeoBlock;
 import fr.horizonsmp.geoBlock.bypass.BypassStore;
+import fr.horizonsmp.geoBlock.geoip.UpdateOutcome;
 import fr.horizonsmp.geoBlock.i18n.Messages;
 import fr.horizonsmp.geoBlock.permission.PermissionService;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -18,7 +20,7 @@ import java.util.UUID;
 
 public final class GeoBlockCommand implements CommandExecutor, TabCompleter {
 
-    private static final List<String> ROOT_SUBS = List.of("reload", "bypass", "help");
+    private static final List<String> ROOT_SUBS = List.of("reload", "bypass", "update", "help");
     private static final List<String> BYPASS_ACTIONS = List.of("add", "remove", "list");
     private static final List<String> BYPASS_TYPES = List.of("ip", "uuid");
 
@@ -49,6 +51,7 @@ public final class GeoBlockCommand implements CommandExecutor, TabCompleter {
         switch (args[0].toLowerCase(Locale.ROOT)) {
             case "reload" -> handleReload(sender);
             case "bypass" -> handleBypass(sender, label, args);
+            case "update" -> handleUpdate(sender);
             case "help" -> sendHelp(sender, label);
             default -> sender.sendMessage(messages.get("command.unknown-subcommand",
                     Map.of("label", label)));
@@ -143,6 +146,24 @@ public final class GeoBlockCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private void handleUpdate(CommandSender sender) {
+        if (!permissions.canUpdate(sender)) {
+            sender.sendMessage(messages.get("command.no-permission"));
+            return;
+        }
+        sender.sendMessage(messages.get("command.update.starting"));
+        plugin.mmdbAutoUpdater().triggerUpdateNow().whenComplete((outcome, throwable) -> {
+            UpdateOutcome resolved = throwable != null ? UpdateOutcome.FAILED : outcome;
+            if (throwable != null) {
+                plugin.getLogger().warning("Manual database update failed: " + throwable.getMessage());
+            }
+            // Hop back to the main thread before touching the sender so we
+            // do not surprise async-unfriendly senders (e.g. Player).
+            Bukkit.getScheduler().runTask(plugin,
+                    () -> sender.sendMessage(messages.get(resolved.messageKey())));
+        });
+    }
+
     private void sendBypassList(CommandSender sender, BypassStore store) {
         sender.sendMessage(messages.get("command.bypass.list-header"));
         List<String> ips = store.listIps();
@@ -165,6 +186,7 @@ public final class GeoBlockCommand implements CommandExecutor, TabCompleter {
         Map<String, String> placeholders = Map.of("label", label);
         sender.sendMessage(messages.get("command.help.header"));
         sender.sendMessage(messages.get("command.help.reload", placeholders));
+        sender.sendMessage(messages.get("command.help.update", placeholders));
         sender.sendMessage(messages.get("command.help.bypass-add-ip", placeholders));
         sender.sendMessage(messages.get("command.help.bypass-add-uuid", placeholders));
         sender.sendMessage(messages.get("command.help.bypass-remove-ip", placeholders));

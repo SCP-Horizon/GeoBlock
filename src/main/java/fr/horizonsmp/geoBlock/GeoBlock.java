@@ -1,6 +1,7 @@
 package fr.horizonsmp.geoBlock;
 
 import fr.horizonsmp.geoBlock.bypass.BypassStore;
+import fr.horizonsmp.geoBlock.command.GeoBlockCommand;
 import fr.horizonsmp.geoBlock.config.ConfigLoader;
 import fr.horizonsmp.geoBlock.config.PluginConfig;
 import fr.horizonsmp.geoBlock.geoip.GeoIpService;
@@ -46,6 +47,15 @@ public final class GeoBlock extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(
                 new PreLoginListener(connectionGuard, messages), this);
+
+        GeoBlockCommand commandExecutor = new GeoBlockCommand(this);
+        var rootCommand = getCommand("geoblock");
+        if (rootCommand != null) {
+            rootCommand.setExecutor(commandExecutor);
+            rootCommand.setTabCompleter(commandExecutor);
+        } else {
+            getLogger().severe("Could not register /geoblock command (missing in plugin.yml).");
+        }
 
         getLogger().info("GeoBlock loaded in " + config.mode() + " mode with "
                 + config.countries().size() + " countries.");

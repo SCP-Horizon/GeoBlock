@@ -2,17 +2,19 @@
 
 A Paper plugin that filters incoming connections by country using a local
 MaxMind GeoLite2 database, with bypass support for trusted IPs and UUIDs,
-optional VPN/proxy detection, and Discord webhook notifications.
+optional VPN/proxy detection and Discord webhook notifications.
 
-## Features (planned)
+## Features
 
-- Country-based filtering in `blacklist` or `whitelist` mode (ISO 3166-1 alpha-2).
-- IP and UUID bypass list (CIDR ranges supported, IPv4 + IPv6).
-- Permission integration through the standard Bukkit API
-  (works with LuckPerms or vanilla `/op`).
-- Optional VPN/proxy detection through MaxMind GeoIP2 Anonymous-IP
+- Country-based filtering in `blacklist` or `whitelist` mode (ISO 3166-1
+  alpha-2 codes).
+- IP and UUID bypass list with IPv4/IPv6 CIDR support.
+- Permission integration through the standard Bukkit API: works with
+  LuckPerms when present, falls back to vanilla `/op` otherwise.
+- Optional VPN/proxy detection via the MaxMind GeoIP2 Anonymous-IP
   database (paid product, separate from the free GeoLite2 country DB).
-- Async Discord webhook for connection denials.
+- Async Discord webhook for connection denials, with toggleable IP
+  inclusion for privacy-conscious deployments.
 - Hot configuration reload via `/geoblock reload`.
 
 ## Build
@@ -21,23 +23,51 @@ optional VPN/proxy detection, and Discord webhook notifications.
 ./gradlew build
 ```
 
-The shadow jar is produced under `build/libs/GeoBlock-<version>.jar` with all
-runtime dependencies relocated under `fr.horizonsmp.geoBlock.lib.*`.
+The shaded jar is produced at `build/libs/GeoBlock-<version>.jar` with all
+runtime dependencies relocated under `fr.horizonsmp.geoBlock.lib.*` to
+avoid clashes with other plugins.
 
-## Run a test server
+## Run a development server
 
 ```sh
 ./gradlew runServer
 ```
 
-This starts a Paper development server with the plugin loaded.
+Boots a Paper development server with the plugin loaded.
 
 ## Requirements
 
 - Java 25
 - Paper 1.21.x (Minecraft `26.1.2` API target)
-- A MaxMind GeoLite2 license key (free) for automatic database updates,
-  or a manually provided MMDB file under the plugin data folder.
+- A MaxMind GeoLite2 license key for automatic database updates, or a
+  manually provided MMDB file under the plugin data folder.
+
+## Configuration
+
+After the first run, edit the files generated under `plugins/GeoBlock/`:
+
+- `config.yml` — filtering mode, country list, GeoIP, VPN and Discord
+  options. Each option is documented inline.
+- `messages.yml` — user-facing strings (kick reasons, command output).
+- `whitelist.yml` — bypass list (managed through commands).
+
+The plugin reads `config.yml`, `messages.yml` and `whitelist.yml` at
+startup and through `/geoblock reload`.
+
+## Commands
+
+| Command                                | Permission                | Description                                |
+|----------------------------------------|---------------------------|--------------------------------------------|
+| `/geoblock reload`                     | `geoblock.command.reload` | Reload all configuration files             |
+| `/geoblock bypass add ip <ip\|cidr>`   | `geoblock.command.bypass` | Add an IP or CIDR to the bypass list       |
+| `/geoblock bypass add uuid <uuid>`     | `geoblock.command.bypass` | Add a player UUID to the bypass list       |
+| `/geoblock bypass remove ip <ip>`      | `geoblock.command.bypass` | Remove an IP/CIDR entry                    |
+| `/geoblock bypass remove uuid <uuid>`  | `geoblock.command.bypass` | Remove a UUID entry                        |
+| `/geoblock bypass list`                | `geoblock.command.bypass` | Show every bypass entry                    |
+| `/geoblock help`                       | `geoblock.admin`          | Print the command summary                  |
+
+`geoblock.admin` (default `op`) implies the two child permissions, so
+operators get full access on a server without LuckPerms.
 
 ## License
 

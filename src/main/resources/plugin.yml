@@ -1,8 +1,25 @@
 name: GeoBlock
 version: '${version}'
+description: Filters connections by country with optional VPN detection and Discord webhook notifications.
+author: Orchiwi
 
 main: fr.horizonsmp.geoBlock.GeoBlock
 api-version: '26.1.2'
 load: POSTWORLD
 
-authors: [Orchiwi]
+softdepend:
+  - LuckPerms
+
+permissions:
+  geoblock.admin:
+    description: Full access to GeoBlock commands.
+    default: op
+    children:
+      geoblock.command.reload: true
+      geoblock.command.bypass: true
+  geoblock.command.reload:
+    description: Allows reloading the GeoBlock configuration.
+    default: op
+  geoblock.command.bypass:
+    description: Allows managing the IP and UUID bypass list.
+    default: op

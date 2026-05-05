@@ -29,7 +29,8 @@ public record PluginConfig(
     public record Discord(
             String webhookUrl,
             boolean includeIp,
-            String username
+            String username,
+            boolean notifyLookupFailure
     ) {
         public boolean isEnabled() {
             return webhookUrl != null && !webhookUrl.isBlank();

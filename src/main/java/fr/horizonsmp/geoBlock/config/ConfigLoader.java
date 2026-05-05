@@ -46,7 +46,8 @@ public final class ConfigLoader {
         PluginConfig.Discord discord = new PluginConfig.Discord(
                 discordSection.getString("webhook-url", ""),
                 discordSection.getBoolean("include-ip", true),
-                discordSection.getString("username", "GeoBlock")
+                discordSection.getString("username", "GeoBlock"),
+                discordSection.getBoolean("notify-lookup-failure", true)
         );
 
         return new PluginConfig(mode, countries, onLookupFailure, geoip, vpn, discord);

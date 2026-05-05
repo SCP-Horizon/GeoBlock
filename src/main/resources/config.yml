@@ -60,7 +60,8 @@ vpn-detection:
   # the player is allowed to connect.
   block-on-detection: true
 
-# Discord webhook used to notify staff when a connection is denied.
+# Discord webhook used to notify staff when a connection is denied
+# or when the GeoIP check could not produce a country.
 discord:
   # Full webhook URL, leave empty to disable notifications.
   webhook-url: ""
@@ -71,3 +72,9 @@ discord:
 
   # Display name used in the webhook message.
   username: "GeoBlock"
+
+  # Send a webhook when the GeoIP check cannot determine a country
+  # (private/local IP, address not in DB, missing database). Useful
+  # to notice silently misconfigured servers, but generates one
+  # message per local connection during testing.
+  notify-lookup-failure: true

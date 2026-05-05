@@ -3,6 +3,7 @@ package fr.horizonsmp.geoBlock.webhook;
 import fr.horizonsmp.geoBlock.config.PluginConfig;
 import fr.horizonsmp.geoBlock.listener.ConnectionDecision;
 import fr.horizonsmp.geoBlock.listener.DenialReason;
+import fr.horizonsmp.geoBlock.listener.LookupStatus;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -21,6 +22,7 @@ import java.util.logging.Logger;
 public final class DiscordWebhookService {
 
     private static final int COLOR_DENIAL = 0xE74C3C;
+    private static final int COLOR_WARNING = 0xF1C40F;
 
     private final HttpClient http;
     private final Supplier<PluginConfig> configSupplier;
@@ -40,7 +42,23 @@ public final class DiscordWebhookService {
         if (!discord.isEnabled()) {
             return;
         }
+        send(discord, buildDenialPayload(playerName, uuid, ipAddress, decision, discord));
+    }
 
+    public void notifyLookupFailure(String playerName,
+                                    UUID uuid,
+                                    String ipAddress,
+                                    LookupStatus status,
+                                    boolean playerAllowed) {
+        PluginConfig config = configSupplier.get();
+        PluginConfig.Discord discord = config.discord();
+        if (!discord.isEnabled() || !discord.notifyLookupFailure()) {
+            return;
+        }
+        send(discord, buildLookupFailurePayload(playerName, uuid, ipAddress, status, playerAllowed, discord));
+    }
+
+    private void send(PluginConfig.Discord discord, String body) {
         URI target;
         try {
             target = new URI(discord.webhookUrl());
@@ -49,7 +67,6 @@ public final class DiscordWebhookService {
             return;
         }
 
-        String body = buildPayload(playerName, uuid, ipAddress, decision, discord);
         HttpRequest request = HttpRequest.newBuilder(target)
                 .timeout(Duration.ofSeconds(10))
                 .header("Content-Type", "application/json; charset=utf-8")
@@ -70,34 +87,54 @@ public final class DiscordWebhookService {
                 });
     }
 
-    private static String buildPayload(String playerName,
-                                       UUID uuid,
-                                       String ipAddress,
-                                       ConnectionDecision decision,
-                                       PluginConfig.Discord discord) {
+    private static String buildDenialPayload(String playerName,
+                                             UUID uuid,
+                                             String ipAddress,
+                                             ConnectionDecision decision,
+                                             PluginConfig.Discord discord) {
         List<String> fields = new ArrayList<>();
-
-        String playerLine = (playerName == null || playerName.isBlank() ? "unknown" : playerName);
-        if (uuid != null) {
-            playerLine += " (`" + uuid + "`)";
-        }
-        fields.add(field("Player", playerLine, true));
+        fields.add(field("Player", formatPlayer(playerName, uuid), true));
 
         if (discord.includeIp() && ipAddress != null && !ipAddress.isBlank()) {
             fields.add(field("IP", "`" + ipAddress + "`", true));
         }
 
         String iso = decision.countryIso().orElse("--");
-        String country = decision.countryDisplayName() + " (" + iso + ")";
-        fields.add(field("Country", country, true));
+        fields.add(field("Country", decision.countryDisplayName() + " (" + iso + ")", true));
 
-        String reason = humanReadableReason(decision.reason().orElse(DenialReason.LOOKUP_FAILED));
-        fields.add(field("Reason", reason, false));
+        DenialReason reason = decision.reason().orElse(DenialReason.LOOKUP_FAILED);
+        fields.add(field("Reason", humanReadableReason(reason), false));
 
         if (decision.proxy()) {
             fields.add(field("Proxy/VPN", "yes", true));
         }
 
+        return wrapEmbed(discord, "Connection refused", COLOR_DENIAL, fields);
+    }
+
+    private static String buildLookupFailurePayload(String playerName,
+                                                    UUID uuid,
+                                                    String ipAddress,
+                                                    LookupStatus status,
+                                                    boolean playerAllowed,
+                                                    PluginConfig.Discord discord) {
+        List<String> fields = new ArrayList<>();
+        fields.add(field("Player", formatPlayer(playerName, uuid), true));
+
+        if (discord.includeIp() && ipAddress != null && !ipAddress.isBlank()) {
+            fields.add(field("IP", "`" + ipAddress + "`", true));
+        }
+
+        fields.add(field("Status", status.description(), false));
+        fields.add(field("Connection", playerAllowed ? "allowed (fail-open)" : "refused (fail-closed)", true));
+
+        return wrapEmbed(discord, "GeoIP lookup did not resolve a country", COLOR_WARNING, fields);
+    }
+
+    private static String wrapEmbed(PluginConfig.Discord discord,
+                                    String title,
+                                    int color,
+                                    List<String> fields) {
         StringBuilder fieldsJson = new StringBuilder();
         for (int i = 0; i < fields.size(); i++) {
             if (i > 0) {
@@ -112,13 +149,21 @@ public final class DiscordWebhookService {
             payload.append("\"username\":\"").append(escape(discord.username())).append("\",");
         }
         payload.append("\"embeds\":[{")
-                .append("\"title\":\"Connection refused\",")
-                .append("\"color\":").append(COLOR_DENIAL).append(',')
+                .append("\"title\":\"").append(escape(title)).append("\",")
+                .append("\"color\":").append(color).append(',')
                 .append("\"timestamp\":\"").append(Instant.now().toString()).append("\",")
                 .append("\"fields\":[").append(fieldsJson).append("]")
                 .append("}]")
                 .append('}');
         return payload.toString();
+    }
+
+    private static String formatPlayer(String playerName, UUID uuid) {
+        String line = (playerName == null || playerName.isBlank() ? "unknown" : playerName);
+        if (uuid != null) {
+            line += " (`" + uuid + "`)";
+        }
+        return line;
     }
 
     private static String field(String name, String value, boolean inline) {

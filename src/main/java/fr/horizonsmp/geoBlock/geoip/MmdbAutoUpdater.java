@@ -1,5 +1,6 @@
 package fr.horizonsmp.geoBlock.geoip;
 
+import fr.horizonsmp.geoBlock.config.GeoIpProvider;
 import fr.horizonsmp.geoBlock.config.PluginConfig;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
@@ -15,8 +16,8 @@ import java.util.logging.Logger;
 
 public final class MmdbAutoUpdater {
 
-    private static final String COUNTRY_EDITION = "GeoLite2-Country";
-    private static final String ANONYMOUS_EDITION = "GeoIP2-Anonymous-IP";
+    private static final String COUNTRY_EDITION_MAXMIND = "GeoLite2-Country";
+    private static final String ANONYMOUS_EDITION_MAXMIND = "GeoIP2-Anonymous-IP";
     private static final long TICKS_PER_SECOND = 20L;
 
     private final Plugin plugin;
@@ -43,8 +44,8 @@ public final class MmdbAutoUpdater {
         if (!config.geoip().autoUpdate()) {
             return;
         }
-        if (config.geoip().licenseKey().isBlank()) {
-            logger.info("GeoIP auto-update is enabled but no license key is set. Skipping downloads.");
+        if (requiresLicense(config) && config.geoip().licenseKey().isBlank()) {
+            logger.info("MaxMind provider selected but no license key is set. Skipping downloads.");
             return;
         }
 
@@ -68,15 +69,20 @@ public final class MmdbAutoUpdater {
 
     /**
      * Triggers an immediate update on a background thread, regardless of
-     * the auto-update schedule. Resolves with NO_LICENSE when no license
-     * key is configured so callers can render a precise message.
+     * the auto-update schedule. Resolves with NO_LICENSE when MaxMind is
+     * selected without a license key.
      */
     public CompletableFuture<UpdateOutcome> triggerUpdateNow() {
         PluginConfig config = configSupplier.get();
-        if (config.geoip().licenseKey().isBlank()) {
+        if (requiresLicense(config) && config.geoip().licenseKey().isBlank()) {
             return CompletableFuture.completedFuture(UpdateOutcome.NO_LICENSE);
         }
         return CompletableFuture.supplyAsync(() -> performUpdate(config));
+    }
+
+    private static boolean requiresLicense(PluginConfig config) {
+        return config.geoip().provider() == GeoIpProvider.MAXMIND
+                || config.vpnDetection().enabled();
     }
 
     private void runScheduledUpdate() {
@@ -84,12 +90,10 @@ public final class MmdbAutoUpdater {
     }
 
     private UpdateOutcome performUpdate(PluginConfig config) {
-        boolean countrySuccess = downloadIfPossible(COUNTRY_EDITION,
-                config.geoip().licenseKey(),
-                resolvePath(config.geoip().databasePath()));
+        boolean countrySuccess = downloadCountry(config);
         boolean anonymousSuccess = true;
         if (config.vpnDetection().enabled()) {
-            anonymousSuccess = downloadIfPossible(ANONYMOUS_EDITION,
+            anonymousSuccess = downloadMaxMindEdition(ANONYMOUS_EDITION_MAXMIND,
                     config.geoip().licenseKey(),
                     resolvePath(config.vpnDetection().databasePath()));
         }
@@ -99,13 +103,37 @@ public final class MmdbAutoUpdater {
         return countrySuccess ? UpdateOutcome.SUCCESS : UpdateOutcome.FAILED;
     }
 
-    private boolean downloadIfPossible(String edition, String licenseKey, Path target) {
+    private boolean downloadCountry(PluginConfig config) {
+        Path target = resolvePath(config.geoip().databasePath());
+        return switch (config.geoip().provider()) {
+            case DB_IP -> downloadDbIp(target);
+            case MAXMIND -> downloadMaxMindEdition(COUNTRY_EDITION_MAXMIND,
+                    config.geoip().licenseKey(), target);
+        };
+    }
+
+    private boolean downloadDbIp(Path target) {
+        try {
+            if (target.getParent() != null) {
+                Files.createDirectories(target.getParent());
+            }
+            logger.info("Downloading country database from db-ip.com ...");
+            downloader.downloadDbIpCountry(target);
+            logger.info("Updated country database at " + target);
+            return true;
+        } catch (IOException e) {
+            logger.log(Level.WARNING, "Failed to update db-ip country database: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean downloadMaxMindEdition(String edition, String licenseKey, Path target) {
         try {
             if (target.getParent() != null) {
                 Files.createDirectories(target.getParent());
             }
             logger.info("Downloading " + edition + " from MaxMind ...");
-            downloader.download(edition, licenseKey, target);
+            downloader.downloadMaxMind(edition, licenseKey, target);
             logger.info("Updated " + edition + " at " + target);
             return true;
         } catch (IOException e) {

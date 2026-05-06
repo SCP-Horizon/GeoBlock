@@ -1,8 +1,8 @@
 # GeoBlock
 
 A Paper plugin that filters incoming connections by country using a local
-MaxMind GeoLite2 database, with bypass support for trusted IPs and UUIDs,
-optional VPN/proxy detection and Discord webhook notifications.
+MMDB database, with bypass support for trusted IPs and UUIDs, optional
+VPN/proxy detection and Discord webhook notifications.
 
 ## Features
 
@@ -12,10 +12,29 @@ optional VPN/proxy detection and Discord webhook notifications.
 - Permission integration through the standard Bukkit API: works with
   LuckPerms when present, falls back to vanilla `/op` otherwise.
 - Optional VPN/proxy detection via the MaxMind GeoIP2 Anonymous-IP
-  database (paid product, separate from the free GeoLite2 country DB).
-- Async Discord webhook for connection denials, with toggleable IP
-  inclusion for privacy-conscious deployments.
-- Hot configuration reload via `/geoblock reload`.
+  database (paid product).
+- Async Discord webhook for connection denials and lookup failures, with
+  toggleable IP inclusion for privacy-conscious deployments.
+- Hot configuration reload via `/geoblock reload` and on-demand database
+  refresh via `/geoblock update`.
+
+## GeoIP providers
+
+GeoBlock supports two interchangeable sources for the country database,
+selected through `geoip.provider` in `config.yml`.
+
+| Provider  | Account | Update cadence | Notes                                  |
+|-----------|---------|----------------|----------------------------------------|
+| `db-ip`   | none    | monthly        | **default**, free, CC-BY 4.0           |
+| `maxmind` | free    | weekly         | required for VPN detection             |
+
+The plugin downloads the database automatically on enable and refreshes
+it on the configured interval. `/geoblock update` triggers an immediate
+download regardless of the schedule.
+
+This product includes IP-Country data created by db-ip.com, made
+available under a Creative Commons Attribution 4.0 International License
+(<https://db-ip.com>).
 
 ## Build
 
@@ -39,15 +58,13 @@ Boots a Paper development server with the plugin loaded.
 
 - Java 25
 - Paper 1.21.x (Minecraft `26.1.2` API target)
-- A MaxMind GeoLite2 license key for automatic database updates, or a
-  manually provided MMDB file under the plugin data folder.
 
 ## Configuration
 
 After the first run, edit the files generated under `plugins/GeoBlock/`:
 
-- `config.yml` — filtering mode, country list, GeoIP, VPN and Discord
-  options. Each option is documented inline.
+- `config.yml` — filtering mode, country list, GeoIP provider, VPN and
+  Discord options. Each option is documented inline.
 - `messages.yml` — user-facing strings (kick reasons, command output).
 - `whitelist.yml` — bypass list (managed through commands).
 
@@ -59,6 +76,7 @@ startup and through `/geoblock reload`.
 | Command                                | Permission                | Description                                |
 |----------------------------------------|---------------------------|--------------------------------------------|
 | `/geoblock reload`                     | `geoblock.command.reload` | Reload all configuration files             |
+| `/geoblock update`                     | `geoblock.command.update` | Force an immediate database download       |
 | `/geoblock bypass add ip <ip\|cidr>`   | `geoblock.command.bypass` | Add an IP or CIDR to the bypass list       |
 | `/geoblock bypass add uuid <uuid>`     | `geoblock.command.bypass` | Add a player UUID to the bypass list       |
 | `/geoblock bypass remove ip <ip>`      | `geoblock.command.bypass` | Remove an IP/CIDR entry                    |
@@ -66,7 +84,7 @@ startup and through `/geoblock reload`.
 | `/geoblock bypass list`                | `geoblock.command.bypass` | Show every bypass entry                    |
 | `/geoblock help`                       | `geoblock.admin`          | Print the command summary                  |
 
-`geoblock.admin` (default `op`) implies the two child permissions, so
+`geoblock.admin` (default `op`) implies the child permissions, so
 operators get full access on a server without LuckPerms.
 
 ## License

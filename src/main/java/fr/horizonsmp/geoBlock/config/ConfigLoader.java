@@ -29,10 +29,11 @@ public final class ConfigLoader {
 
         ConfigurationSection geoSection = section(cfg, "geoip");
         PluginConfig.GeoIp geoip = new PluginConfig.GeoIp(
+                GeoIpProvider.fromString(geoSection.getString("provider"), GeoIpProvider.DB_IP),
                 geoSection.getString("license-key", ""),
                 geoSection.getBoolean("auto-update", true),
                 geoSection.getLong("update-interval-hours", 168L),
-                geoSection.getString("database-path", "GeoLite2-Country.mmdb")
+                geoSection.getString("database-path", "country.mmdb")
         );
 
         ConfigurationSection vpnSection = section(cfg, "vpn-detection");

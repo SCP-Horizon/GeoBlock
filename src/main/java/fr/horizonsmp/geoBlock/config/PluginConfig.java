@@ -12,6 +12,7 @@ public record PluginConfig(
 ) {
 
     public record GeoIp(
+            GeoIpProvider provider,
             String licenseKey,
             boolean autoUpdate,
             long updateIntervalHours,

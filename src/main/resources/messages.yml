@@ -22,9 +22,9 @@ command:
   reload-failed: "&cReload failed: &7{error}"
 
   update:
-    starting: "&7Triggering MaxMind database download ..."
-    success: "&aMaxMind database downloaded and reloaded."
-    no-license: "&cNo MaxMind license key configured. Set &egeoip.license-key&c in config.yml or place the MMDB file manually under &eplugins/GeoBlock/&c."
+    starting: "&7Triggering country database download ..."
+    success: "&aCountry database downloaded and reloaded."
+    no-license: "&cMaxMind provider selected but no license key set. Either set &egeoip.license-key&c, switch to &egeoip.provider: db-ip&c (no key required), or place the MMDB file manually under &eplugins/GeoBlock/&c."
     failed: "&cDatabase update failed. Check the server logs for details."
 
   bypass:
@@ -51,4 +51,4 @@ command:
     bypass-remove-ip: "&e/{label} bypass remove ip <ip|cidr> &8- &7Remove an IP entry"
     bypass-remove-uuid: "&e/{label} bypass remove uuid <uuid> &8- &7Remove a UUID entry"
     bypass-list: "&e/{label} bypass list &8- &7Show all bypass entries"
-    update: "&e/{label} update &8- &7Force a MaxMind database download"
+    update: "&e/{label} update &8- &7Force a country database download"

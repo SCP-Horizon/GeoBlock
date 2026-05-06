@@ -2,7 +2,7 @@
 # GeoBlock configuration
 #
 # Filter Minecraft connections based on the country resolved from the
-# player's IP address using a local MaxMind GeoLite2 database.
+# player's IP address using a local MMDB database.
 # =====================================================================
 
 # Filtering mode applied to the country list below.
@@ -22,31 +22,37 @@ countries:
 #   deny  : refuse the connection (fail-closed, strict)
 on-lookup-failure: allow
 
-# MaxMind GeoLite2 country database settings.
+# Country database settings.
 geoip:
-  # MaxMind license key. Required for automatic updates of GeoLite2.
+  # Where the country MMDB comes from.
+  #   db-ip   : free, no account, monthly update from db-ip.com.
+  #             Database licensed under CC-BY 4.0; please keep the
+  #             attribution in the README intact.
+  #   maxmind : MaxMind GeoLite2-Country. Requires a free license key.
+  #             Use this if you also enable VPN detection below.
+  provider: db-ip
+
+  # MaxMind license key, only used when provider=maxmind.
   # Get one for free at https://www.maxmind.com/en/geolite2/signup.
-  # If left empty, the plugin will only use the file at "database-path"
-  # below, which the server administrator must provide manually.
   license-key: ""
 
-  # Automatically download and refresh the GeoLite2-Country database.
+  # Automatically download and refresh the country database.
   auto-update: true
 
-  # How often to check for database updates, in hours.
+  # How often to check for database updates, in hours. db-ip releases
+  # one update per month, so weekly (168h) or longer is plenty.
   update-interval-hours: 168
 
-  # Path to the GeoLite2-Country MMDB file, relative to the plugin
-  # data folder, or absolute.
-  database-path: "GeoLite2-Country.mmdb"
+  # Path to the country MMDB file, relative to the plugin data folder
+  # or absolute. The plugin writes the downloaded database here.
+  database-path: "country.mmdb"
 
 # Optional VPN / proxy detection through the MaxMind GeoIP2
 # Anonymous-IP database. Disabled by default.
 #
-# IMPORTANT: GeoIP2-Anonymous-IP is a PAID MaxMind product, separate
-# from the free GeoLite2-Country database. It cannot be downloaded
-# with a regular GeoLite2 license key. To use this feature you must
-# subscribe to the GeoIP2 Anonymous IP database on MaxMind.
+# IMPORTANT: GeoIP2-Anonymous-IP is a PAID MaxMind product. Enabling
+# this requires a MaxMind subscription and a license key set under
+# geoip.license-key. db-ip does not offer an equivalent free dataset.
 vpn-detection:
   enabled: false
 

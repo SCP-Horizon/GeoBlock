@@ -14,14 +14,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
-import java.util.Optional;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.zip.GZIPInputStream;
 
 public final class MmdbDownloader {
 
-    private static final String DOWNLOAD_URL =
+    private static final String MAXMIND_URL =
             "https://download.maxmind.com/app/geoip_download"
                     + "?edition_id=%s&license_key=%s&suffix=tar.gz";
+
+    private static final String DB_IP_COUNTRY_URL =
+            "https://download.db-ip.com/free/dbip-country-lite-%s.mmdb.gz";
+
+    private static final DateTimeFormatter DB_IP_MONTH = DateTimeFormatter.ofPattern("yyyy-MM");
+    private static final int DB_IP_FALLBACK_MONTHS = 2;
 
     private static final int TAR_BLOCK_SIZE = 512;
     private static final int NAME_LENGTH = 100;
@@ -38,44 +45,91 @@ public final class MmdbDownloader {
     }
 
     /**
-     * Downloads the given GeoLite2 edition and writes the embedded
-     * .mmdb file to the given target path atomically.
+     * Downloads a MaxMind edition (tar.gz archive) and writes the embedded
+     * .mmdb file at the target path atomically.
      *
-     * @param edition    e.g. "GeoLite2-Country" or "GeoLite2-Anonymous-IP"
+     * @param edition    e.g. "GeoLite2-Country" or "GeoIP2-Anonymous-IP"
      * @param licenseKey MaxMind license key, must not be blank
-     * @param target     target file path; the parent directory must exist
      */
-    public void download(String edition, String licenseKey, Path target) throws IOException {
+    public void downloadMaxMind(String edition, String licenseKey, Path target) throws IOException {
         if (licenseKey == null || licenseKey.isBlank()) {
             throw new IOException("MaxMind license key is required for automatic updates");
         }
 
         Path stagingDir = stagingDirectoryFor(target);
-
-        URI uri = URI.create(String.format(DOWNLOAD_URL, edition, licenseKey));
-        HttpRequest req = HttpRequest.newBuilder(uri)
-                .timeout(Duration.ofMinutes(2))
-                .GET()
-                .build();
+        URI uri = URI.create(String.format(MAXMIND_URL, edition, licenseKey));
 
         Path tmpArchive = Files.createTempFile(stagingDir, "geoblock-mmdb-", ".tar.gz");
         try {
-            HttpResponse<Path> response = http.send(req,
-                    HttpResponse.BodyHandlers.ofFile(tmpArchive));
+            HttpResponse<Path> response = httpGetToFile(uri, tmpArchive);
             if (response.statusCode() != 200) {
                 throw new IOException("MaxMind returned HTTP " + response.statusCode()
                         + " for " + edition + " (check the license key)");
             }
-            extractMmdb(tmpArchive, target, stagingDir);
+            extractTarGzMmdb(tmpArchive, target, stagingDir);
+        } finally {
+            deleteQuietly(tmpArchive);
+        }
+    }
+
+    /**
+     * Downloads the free db-ip.com country database for the current month,
+     * falling back to earlier months when the latest release is not yet
+     * published. No account or license key is required; the database is
+     * licensed under CC-BY 4.0 and must be credited to db-ip.com.
+     */
+    public void downloadDbIpCountry(Path target) throws IOException {
+        Path stagingDir = stagingDirectoryFor(target);
+        IOException last = null;
+        YearMonth month = YearMonth.now();
+        for (int attempt = 0; attempt <= DB_IP_FALLBACK_MONTHS; attempt++) {
+            URI uri = URI.create(String.format(DB_IP_COUNTRY_URL, month.format(DB_IP_MONTH)));
+            try {
+                downloadGzippedMmdb(uri, target, stagingDir);
+                return;
+            } catch (IOException e) {
+                last = e;
+                month = month.minusMonths(1);
+            }
+        }
+        throw new IOException("Could not download a db-ip country database for the last "
+                + (DB_IP_FALLBACK_MONTHS + 1) + " months: " + (last == null ? "?" : last.getMessage()), last);
+    }
+
+    private void downloadGzippedMmdb(URI uri, Path target, Path stagingDir) throws IOException {
+        Path tmpGz = Files.createTempFile(stagingDir, "geoblock-mmdb-", ".mmdb.gz");
+        Path tmpMmdb = Files.createTempFile(stagingDir, "geoblock-mmdb-", ".mmdb");
+        boolean moved = false;
+        try {
+            HttpResponse<Path> response = httpGetToFile(uri, tmpGz);
+            if (response.statusCode() != 200) {
+                throw new IOException("HTTP " + response.statusCode() + " for " + uri);
+            }
+            try (InputStream in = Files.newInputStream(tmpGz);
+                 GZIPInputStream gzip = new GZIPInputStream(in);
+                 OutputStream out = Files.newOutputStream(tmpMmdb)) {
+                gzip.transferTo(out);
+            }
+            atomicReplace(tmpMmdb, target);
+            moved = true;
+        } finally {
+            deleteQuietly(tmpGz);
+            if (!moved) {
+                deleteQuietly(tmpMmdb);
+            }
+        }
+    }
+
+    private HttpResponse<Path> httpGetToFile(URI uri, Path file) throws IOException {
+        HttpRequest req = HttpRequest.newBuilder(uri)
+                .timeout(Duration.ofMinutes(2))
+                .GET()
+                .build();
+        try {
+            return http.send(req, HttpResponse.BodyHandlers.ofFile(file));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Download was interrupted", e);
-        } finally {
-            try {
-                Files.deleteIfExists(tmpArchive);
-            } catch (IOException ignored) {
-                // best-effort cleanup
-            }
         }
     }
 
@@ -88,7 +142,7 @@ public final class MmdbDownloader {
         return parent;
     }
 
-    private static void extractMmdb(Path archive, Path target, Path stagingDir) throws IOException {
+    private static void extractTarGzMmdb(Path archive, Path target, Path stagingDir) throws IOException {
         Path tmpExtract = Files.createTempFile(stagingDir, "geoblock-mmdb-", ".mmdb");
         boolean moved = false;
         try {
@@ -96,7 +150,7 @@ public final class MmdbDownloader {
                  GZIPInputStream gzip = new GZIPInputStream(in);
                  BufferedInputStream buffered = new BufferedInputStream(gzip)) {
 
-                if (!readArchiveInto(buffered, tmpExtract)) {
+                if (!readTarInto(buffered, tmpExtract)) {
                     throw new IOException("Archive did not contain any .mmdb file");
                 }
             }
@@ -104,16 +158,12 @@ public final class MmdbDownloader {
             moved = true;
         } finally {
             if (!moved) {
-                try {
-                    Files.deleteIfExists(tmpExtract);
-                } catch (IOException ignored) {
-                    // best-effort cleanup
-                }
+                deleteQuietly(tmpExtract);
             }
         }
     }
 
-    private static boolean readArchiveInto(BufferedInputStream buffered, Path tmpExtract) throws IOException {
+    private static boolean readTarInto(BufferedInputStream buffered, Path tmpExtract) throws IOException {
         byte[] header = new byte[TAR_BLOCK_SIZE];
         while (true) {
             int read = buffered.readNBytes(header, 0, TAR_BLOCK_SIZE);
@@ -149,9 +199,6 @@ public final class MmdbDownloader {
                     StandardCopyOption.REPLACE_EXISTING,
                     StandardCopyOption.ATOMIC_MOVE);
         } catch (AtomicMoveNotSupportedException e) {
-            // Fall back to a regular replace; the staging directory should be on
-            // the same volume as the target, but some exotic filesystems still
-            // refuse atomic moves even within the same mount.
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
         }
     }
@@ -206,7 +253,11 @@ public final class MmdbDownloader {
         return value;
     }
 
-    public static Optional<String> editionForCountry() {
-        return Optional.of("GeoLite2-Country");
+    private static void deleteQuietly(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
+            // best-effort cleanup
+        }
     }
 }

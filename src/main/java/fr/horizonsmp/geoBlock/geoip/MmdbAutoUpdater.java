@@ -17,7 +17,6 @@ import java.util.logging.Logger;
 public final class MmdbAutoUpdater {
 
     private static final String COUNTRY_EDITION_MAXMIND = "GeoLite2-Country";
-    private static final String ANONYMOUS_EDITION_MAXMIND = "GeoIP2-Anonymous-IP";
     private static final long TICKS_PER_SECOND = 20L;
 
     private final Plugin plugin;
@@ -81,8 +80,7 @@ public final class MmdbAutoUpdater {
     }
 
     private static boolean requiresLicense(PluginConfig config) {
-        return config.geoip().provider() == GeoIpProvider.MAXMIND
-                || config.vpnDetection().enabled();
+        return config.geoip().provider() == GeoIpProvider.MAXMIND;
     }
 
     private void runScheduledUpdate() {
@@ -91,13 +89,7 @@ public final class MmdbAutoUpdater {
 
     private UpdateOutcome performUpdate(PluginConfig config) {
         boolean countrySuccess = downloadCountry(config);
-        boolean anonymousSuccess = true;
-        if (config.vpnDetection().enabled()) {
-            anonymousSuccess = downloadMaxMindEdition(ANONYMOUS_EDITION_MAXMIND,
-                    config.geoip().licenseKey(),
-                    resolvePath(config.vpnDetection().databasePath()));
-        }
-        if (countrySuccess || anonymousSuccess) {
+        if (countrySuccess) {
             geoIpService.reload();
         }
         return countrySuccess ? UpdateOutcome.SUCCESS : UpdateOutcome.FAILED;
@@ -107,8 +99,8 @@ public final class MmdbAutoUpdater {
         Path target = resolvePath(config.geoip().databasePath());
         return switch (config.geoip().provider()) {
             case DB_IP -> downloadDbIp(target);
-            case MAXMIND -> downloadMaxMindEdition(COUNTRY_EDITION_MAXMIND,
-                    config.geoip().licenseKey(), target);
+            case MAXMIND -> downloadMaxMindEdition(target,
+                    config.geoip().licenseKey());
         };
     }
 
@@ -127,17 +119,17 @@ public final class MmdbAutoUpdater {
         }
     }
 
-    private boolean downloadMaxMindEdition(String edition, String licenseKey, Path target) {
+    private boolean downloadMaxMindEdition(Path target, String licenseKey) {
         try {
             if (target.getParent() != null) {
                 Files.createDirectories(target.getParent());
             }
-            logger.info("Downloading " + edition + " from MaxMind ...");
-            downloader.downloadMaxMind(edition, licenseKey, target);
-            logger.info("Updated " + edition + " at " + target);
+            logger.info("Downloading " + COUNTRY_EDITION_MAXMIND + " from MaxMind ...");
+            downloader.downloadMaxMind(COUNTRY_EDITION_MAXMIND, licenseKey, target);
+            logger.info("Updated " + COUNTRY_EDITION_MAXMIND + " at " + target);
             return true;
         } catch (IOException e) {
-            logger.log(Level.WARNING, "Failed to update " + edition + ": " + e.getMessage());
+            logger.log(Level.WARNING, "Failed to update " + COUNTRY_EDITION_MAXMIND + ": " + e.getMessage());
             return false;
         }
     }

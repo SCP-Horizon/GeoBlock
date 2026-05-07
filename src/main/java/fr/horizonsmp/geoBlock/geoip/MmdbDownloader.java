@@ -48,7 +48,7 @@ public final class MmdbDownloader {
      * Downloads a MaxMind edition (tar.gz archive) and writes the embedded
      * .mmdb file at the target path atomically.
      *
-     * @param edition    e.g. "GeoLite2-Country" or "GeoIP2-Anonymous-IP"
+     * @param edition    e.g. "GeoLite2-Country"
      * @param licenseKey MaxMind license key, must not be blank
      */
     public void downloadMaxMind(String edition, String licenseKey, Path target) throws IOException {

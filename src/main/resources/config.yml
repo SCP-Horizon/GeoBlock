@@ -29,7 +29,6 @@ geoip:
   #             Database licensed under CC-BY 4.0; please keep the
   #             attribution in the README intact.
   #   maxmind : MaxMind GeoLite2-Country. Requires a free license key.
-  #             Use this if you also enable VPN detection below.
   provider: db-ip
 
   # MaxMind license key, only used when provider=maxmind.
@@ -46,25 +45,6 @@ geoip:
   # Path to the country MMDB file, relative to the plugin data folder
   # or absolute. The plugin writes the downloaded database here.
   database-path: "country.mmdb"
-
-# Optional VPN / proxy detection through the MaxMind GeoIP2
-# Anonymous-IP database. Disabled by default.
-#
-# IMPORTANT: GeoIP2-Anonymous-IP is a PAID MaxMind product. Enabling
-# this requires a MaxMind subscription and a license key set under
-# geoip.license-key. db-ip does not offer an equivalent free dataset.
-vpn-detection:
-  enabled: false
-
-  # Path to the GeoIP2-Anonymous-IP MMDB file, relative to the plugin
-  # data folder, or absolute. Provide the file manually if you do not
-  # have a GeoIP2 subscription configured for automatic updates.
-  database-path: "GeoIP2-Anonymous-IP.mmdb"
-
-  # When a VPN/proxy is detected, refuse the connection. When false,
-  # detection runs but only the regular country filter decides whether
-  # the player is allowed to connect.
-  block-on-detection: true
 
 # Discord webhook used to notify staff when a connection is denied
 # or when the GeoIP check could not produce a country.

@@ -36,13 +36,6 @@ public final class ConfigLoader {
                 geoSection.getString("database-path", "country.mmdb")
         );
 
-        ConfigurationSection vpnSection = section(cfg, "vpn-detection");
-        PluginConfig.VpnDetection vpn = new PluginConfig.VpnDetection(
-                vpnSection.getBoolean("enabled", false),
-                vpnSection.getString("database-path", "GeoLite2-Anonymous-IP.mmdb"),
-                vpnSection.getBoolean("block-on-detection", true)
-        );
-
         ConfigurationSection discordSection = section(cfg, "discord");
         PluginConfig.Discord discord = new PluginConfig.Discord(
                 discordSection.getString("webhook-url", ""),
@@ -51,7 +44,7 @@ public final class ConfigLoader {
                 discordSection.getBoolean("notify-lookup-failure", true)
         );
 
-        return new PluginConfig(mode, countries, onLookupFailure, geoip, vpn, discord);
+        return new PluginConfig(mode, countries, onLookupFailure, geoip, discord);
     }
 
     private static Set<String> parseCountries(List<String> raw) {

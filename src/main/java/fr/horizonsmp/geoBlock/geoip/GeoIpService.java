@@ -7,9 +7,9 @@ import java.util.Optional;
 public interface GeoIpService extends Closeable {
 
     /**
-     * Resolves the country (and optionally the proxy flag) for the given
-     * address. Returns an empty Optional when the address is private,
-     * local, or not present in the underlying database.
+     * Resolves the country for the given address. Returns an empty
+     * Optional when the address is private, local, or not present in
+     * the underlying database.
      */
     Optional<LookupResult> lookup(InetAddress address);
 

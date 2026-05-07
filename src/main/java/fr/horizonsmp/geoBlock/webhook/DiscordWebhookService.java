@@ -105,10 +105,6 @@ public final class DiscordWebhookService {
         DenialReason reason = decision.reason().orElse(DenialReason.LOOKUP_FAILED);
         fields.add(field("Reason", humanReadableReason(reason), false));
 
-        if (decision.proxy()) {
-            fields.add(field("Proxy/VPN", "yes", true));
-        }
-
         return wrapEmbed(discord, "Connection refused", COLOR_DENIAL, fields);
     }
 
@@ -176,7 +172,6 @@ public final class DiscordWebhookService {
         return switch (reason) {
             case COUNTRY_BLACKLISTED -> "Country is blacklisted";
             case COUNTRY_NOT_WHITELISTED -> "Country is not whitelisted";
-            case VPN_DETECTED -> "VPN or proxy detected";
             case LOOKUP_FAILED -> "GeoIP lookup failed";
         };
     }

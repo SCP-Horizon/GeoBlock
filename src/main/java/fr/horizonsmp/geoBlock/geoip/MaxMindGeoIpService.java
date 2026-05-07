@@ -5,7 +5,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.exception.AddressNotFoundException;
 import com.maxmind.geoip2.exception.GeoIp2Exception;
-import com.maxmind.geoip2.model.AnonymousIpResponse;
 import com.maxmind.geoip2.model.CountryResponse;
 import fr.horizonsmp.geoBlock.config.PluginConfig;
 
@@ -28,7 +27,7 @@ public final class MaxMindGeoIpService implements GeoIpService {
     private final Logger logger;
     private final Path dataFolder;
     private final AtomicReference<PluginConfig> configRef;
-    private final AtomicReference<Readers> readersRef = new AtomicReference<>(Readers.EMPTY);
+    private final AtomicReference<DatabaseReader> readerRef = new AtomicReference<>();
     private final Cache<InetAddress, Optional<LookupResult>> cache = Caffeine.newBuilder()
             .expireAfterWrite(CACHE_TTL)
             .maximumSize(CACHE_MAX_SIZE)
@@ -50,7 +49,7 @@ public final class MaxMindGeoIpService implements GeoIpService {
 
     @Override
     public boolean isDatabaseLoaded() {
-        return readersRef.get().country != null;
+        return readerRef.get() != null;
     }
 
     @Override
@@ -62,21 +61,17 @@ public final class MaxMindGeoIpService implements GeoIpService {
     }
 
     private Optional<LookupResult> resolve(InetAddress address) {
-        Readers readers = readersRef.get();
-        if (readers.country == null) {
+        DatabaseReader reader = readerRef.get();
+        if (reader == null) {
             return NO_RESULT;
         }
         try {
-            CountryResponse country = readers.country.country(address);
+            CountryResponse country = reader.country(address);
             String iso = country.getCountry() != null ? country.getCountry().getIsoCode() : null;
             if (iso == null || iso.isBlank()) {
                 return NO_RESULT;
             }
-            LookupResult result = LookupResult.country(iso);
-            if (readers.anonymous != null) {
-                result = result.withProxy(detectProxy(readers.anonymous, address));
-            }
-            return Optional.of(result);
+            return Optional.of(new LookupResult(iso));
         } catch (AddressNotFoundException e) {
             return NO_RESULT;
         } catch (IOException | GeoIp2Exception e) {
@@ -85,54 +80,22 @@ public final class MaxMindGeoIpService implements GeoIpService {
         }
     }
 
-    private static boolean detectProxy(DatabaseReader reader, InetAddress address) {
-        try {
-            AnonymousIpResponse r = reader.anonymousIp(address);
-            return r.isAnonymous()
-                    || r.isAnonymousVpn()
-                    || r.isHostingProvider()
-                    || r.isPublicProxy()
-                    || r.isResidentialProxy()
-                    || r.isTorExitNode();
-        } catch (AddressNotFoundException e) {
-            return false;
-        } catch (IOException | GeoIp2Exception e) {
-            return false;
-        }
-    }
-
     @Override
     public synchronized void reload() {
         PluginConfig cfg = configRef.get();
-        Readers next = open(cfg);
-        Readers previous = readersRef.getAndSet(next);
+        DatabaseReader next = openReader(resolvePath(cfg.geoip().databasePath()));
+        DatabaseReader previous = readerRef.getAndSet(next);
         cache.invalidateAll();
         closeQuietly(previous);
 
-        if (next.country == null) {
+        if (next == null) {
             logger.warning("GeoIP country database is not loaded. Connections will follow the on-lookup-failure policy.");
         } else {
             logger.info("GeoIP country database loaded from " + cfg.geoip().databasePath());
         }
-        if (cfg.vpnDetection().enabled()) {
-            if (next.anonymous == null) {
-                logger.warning("VPN detection enabled but anonymous-IP database is missing.");
-            } else {
-                logger.info("Anonymous-IP database loaded from " + cfg.vpnDetection().databasePath());
-            }
-        }
     }
 
-    private Readers open(PluginConfig cfg) {
-        DatabaseReader country = openReader(resolvePath(cfg.geoip().databasePath()), "country");
-        DatabaseReader anonymous = null;
-        if (cfg.vpnDetection().enabled()) {
-            anonymous = openReader(resolvePath(cfg.vpnDetection().databasePath()), "anonymous-IP");
-        }
-        return new Readers(country, anonymous);
-    }
-
-    private DatabaseReader openReader(Path path, String label) {
+    private DatabaseReader openReader(Path path) {
         if (!Files.exists(path)) {
             return null;
         }
@@ -141,7 +104,7 @@ public final class MaxMindGeoIpService implements GeoIpService {
                     .fileMode(com.maxmind.db.Reader.FileMode.MEMORY_MAPPED)
                     .build();
         } catch (IOException e) {
-            logger.log(Level.WARNING, "Failed to open " + label + " database at " + path, e);
+            logger.log(Level.WARNING, "Failed to open country database at " + path, e);
             return null;
         }
     }
@@ -153,27 +116,18 @@ public final class MaxMindGeoIpService implements GeoIpService {
 
     @Override
     public void close() {
-        Readers previous = readersRef.getAndSet(Readers.EMPTY);
+        DatabaseReader previous = readerRef.getAndSet(null);
         closeQuietly(previous);
     }
 
-    private void closeQuietly(Readers readers) {
-        if (readers == null) {
+    private void closeQuietly(DatabaseReader reader) {
+        if (reader == null) {
             return;
         }
-        if (readers.country != null) {
-            try {
-                readers.country.close();
-            } catch (IOException e) {
-                logger.log(Level.FINE, "Error closing country reader", e);
-            }
-        }
-        if (readers.anonymous != null) {
-            try {
-                readers.anonymous.close();
-            } catch (IOException e) {
-                logger.log(Level.FINE, "Error closing anonymous reader", e);
-            }
+        try {
+            reader.close();
+        } catch (IOException e) {
+            logger.log(Level.FINE, "Error closing country reader", e);
         }
     }
 
@@ -183,9 +137,5 @@ public final class MaxMindGeoIpService implements GeoIpService {
                 || address.isLinkLocalAddress()
                 || address.isSiteLocalAddress()
                 || address.isMulticastAddress();
-    }
-
-    private record Readers(DatabaseReader country, DatabaseReader anonymous) {
-        static final Readers EMPTY = new Readers(null, null);
     }
 }

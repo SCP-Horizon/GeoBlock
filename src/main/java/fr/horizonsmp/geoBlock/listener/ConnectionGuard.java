@@ -43,23 +43,16 @@ public final class ConnectionGuard {
                     : ConnectionDecision.allow(resolution.status());
         }
 
-        LookupResult result = resolution.result().orElseThrow();
-        String iso = result.countryIso();
-        boolean proxy = result.proxy();
-
-        if (proxy && config.vpnDetection().enabled() && config.vpnDetection().blockOnDetection()) {
-            return ConnectionDecision.deny(DenialReason.VPN_DETECTED, iso, true);
-        }
-
+        String iso = resolution.result().orElseThrow().countryIso();
         boolean inList = config.countries().contains(iso);
         if (config.mode() == FilterMode.BLACKLIST && inList) {
-            return ConnectionDecision.deny(DenialReason.COUNTRY_BLACKLISTED, iso, proxy);
+            return ConnectionDecision.deny(DenialReason.COUNTRY_BLACKLISTED, iso);
         }
         if (config.mode() == FilterMode.WHITELIST && !inList) {
-            return ConnectionDecision.deny(DenialReason.COUNTRY_NOT_WHITELISTED, iso, proxy);
+            return ConnectionDecision.deny(DenialReason.COUNTRY_NOT_WHITELISTED, iso);
         }
 
-        return ConnectionDecision.allow(iso, proxy);
+        return ConnectionDecision.allow(iso);
     }
 
     private LookupResolution resolve(InetAddress address) {

@@ -1,8 +1,8 @@
 # GeoBlock
 
 A Paper plugin that filters incoming connections by country using a local
-MMDB database, with bypass support for trusted IPs and UUIDs, optional
-VPN/proxy detection and Discord webhook notifications.
+MMDB database, with bypass support for trusted IPs and UUIDs and Discord
+webhook notifications.
 
 ## Features
 
@@ -11,8 +11,6 @@ VPN/proxy detection and Discord webhook notifications.
 - IP and UUID bypass list with IPv4/IPv6 CIDR support.
 - Permission integration through the standard Bukkit API: works with
   LuckPerms when present, falls back to vanilla `/op` otherwise.
-- Optional VPN/proxy detection via the MaxMind GeoIP2 Anonymous-IP
-  database (paid product).
 - Async Discord webhook for connection denials and lookup failures, with
   toggleable IP inclusion for privacy-conscious deployments.
 - Hot configuration reload via `/geoblock reload` and on-demand database
@@ -26,7 +24,7 @@ selected through `geoip.provider` in `config.yml`.
 | Provider  | Account | Update cadence | Notes                                  |
 |-----------|---------|----------------|----------------------------------------|
 | `db-ip`   | none    | monthly        | **default**, free, CC-BY 4.0           |
-| `maxmind` | free    | weekly         | required for VPN detection             |
+| `maxmind` | free    | weekly         | requires a MaxMind license key         |
 
 The plugin downloads the database automatically on enable and refreshes
 it on the configured interval. `/geoblock update` triggers an immediate
@@ -63,7 +61,7 @@ Boots a Paper development server with the plugin loaded.
 
 After the first run, edit the files generated under `plugins/GeoBlock/`:
 
-- `config.yml` — filtering mode, country list, GeoIP provider, VPN and
+- `config.yml` — filtering mode, country list, GeoIP provider and
   Discord options. Each option is documented inline.
 - `messages.yml` — user-facing strings (kick reasons, command output).
 - `whitelist.yml` — bypass list (managed through commands).

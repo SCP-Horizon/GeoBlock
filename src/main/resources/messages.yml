@@ -10,7 +10,6 @@
 kick:
   blocked: "&cConnection refused.\n&7Country &e{country}&7 is blocked on this server."
   not-whitelisted: "&cConnection refused.\n&7Country &e{country}&7 is not allowed on this server."
-  vpn: "&cConnection refused.\n&7VPN or proxy detected."
   lookup-failed: "&cConnection refused.\n&7Could not verify your country."
 
 # --- Command feedback ----------------------------------------------

@@ -7,7 +7,6 @@ public record PluginConfig(
         Set<String> countries,
         FailurePolicy onLookupFailure,
         GeoIp geoip,
-        VpnDetection vpnDetection,
         Discord discord
 ) {
 
@@ -17,13 +16,6 @@ public record PluginConfig(
             boolean autoUpdate,
             long updateIntervalHours,
             String databasePath
-    ) {
-    }
-
-    public record VpnDetection(
-            boolean enabled,
-            String databasePath,
-            boolean blockOnDetection
     ) {
     }
 

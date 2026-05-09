@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/SCP-Horizon/GeoBlock#readme
+    about: The README covers installation, providers, commands and configuration.
+  - name: Modrinth project
+    url: https://modrinth.com/plugin/geoblock
+    about: Latest release downloads and per-version changelog.
+  - name: Discussions
+    url: https://github.com/SCP-Horizon/GeoBlock/discussions
+    about: General questions and ideas that are not bug reports.

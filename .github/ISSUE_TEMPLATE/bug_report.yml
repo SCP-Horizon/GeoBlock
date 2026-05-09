@@ -1,0 +1,120 @@
+name: Bug report
+description: Report a problem with GeoBlock.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in
+        the form below so the issue can be reproduced and fixed
+        without back-and-forth.
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: GeoBlock version
+      description: Output of `/version GeoBlock` in-game, or the jar file name.
+      placeholder: 1.0.0-beta.1
+    validations:
+      required: true
+
+  - type: input
+    id: server-software
+    attributes:
+      label: Server software and version
+      description: First line of `/version` in-game.
+      placeholder: Paper 1.21.6 build 60
+    validations:
+      required: true
+
+  - type: input
+    id: java-version
+    attributes:
+      label: Java version
+      description: Output of `java -version` on the server host.
+      placeholder: 25.0.1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: GeoIP provider in use
+      options:
+        - "db-ip (default)"
+        - "maxmind"
+        - "not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: A numbered list, the more precise the better.
+      placeholder: |
+        1. Set `mode: blacklist` and add `RU` to the list
+        2. Connect from a Russian IP
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Server logs
+      description: |
+        Paste the relevant section of `logs/latest.log`, or share a
+        https://gist.github.com link if it is too long. Include the
+        lines immediately before and after the issue, including any
+        GeoBlock log lines (they are prefixed with `[GeoBlock]`).
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: config
+    attributes:
+      label: GeoBlock config
+      description: |
+        Paste the relevant section of `plugins/GeoBlock/config.yml`.
+        **Strip your MaxMind license key and Discord webhook URL** if
+        they are present.
+      render: yaml
+    validations:
+      required: false
+
+  - type: textarea
+    id: other-plugins
+    attributes:
+      label: Other plugins installed
+      description: Output of `/plugins`. Helpful when a plugin interaction is suspected.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: I am running the latest GeoBlock release.
+          required: true
+        - label: I have searched existing issues for duplicates.
+          required: true
+        - label: I confirm no secrets (license keys, webhook URLs) appear in the data I pasted.
+          required: true

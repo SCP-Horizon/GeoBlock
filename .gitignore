@@ -19,3 +19,8 @@ hs_err_pid*
 
 # Common working directory
 run
+
+# Local-only files
+.local/
+.claude/
+.github/workflows/release.yml

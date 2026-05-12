@@ -1,6 +1,10 @@
 #
 # https://help.github.com/articles/dealing-with-line-endings/
 #
+
+# Default: treat as text and normalize to LF on commit
+*               text=auto eol=lf
+
 # Linux start script should use lf
 /gradlew        text eol=lf
 

@@ -23,4 +23,3 @@ run
 # Local-only files
 .local/
 .claude/
-.github/workflows/release.yml

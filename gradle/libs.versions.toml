@@ -4,6 +4,7 @@ minecraft = "26.1.2"
 
 run-task = "3.0.2"
 shadow = "9.0.0"
+minotaur = "2.8.7"
 
 geoip2 = "4.2.1"
 caffeine = "3.1.8"
@@ -16,3 +17,4 @@ caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "c
 [plugins]
 run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-task" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+minotaur = { id = "com.modrinth.minotaur", version.ref = "minotaur" }
